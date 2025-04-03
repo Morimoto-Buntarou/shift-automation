@@ -1,0 +1,19 @@
+# 認証情報（Google秘密鍵）
+*.json
+
+# .env ファイル（Discordトークン）
+.env
+apple/.env
+
+# Pythonキャッシュ
+__pycache__/
+
+# ビルドファイル
+build/
+dist/
+
+# ログファイル
+*.log
+
+# 一時ファイル
+last_row.txt

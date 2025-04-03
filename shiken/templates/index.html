@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Script Executor</title>
+</head>
+<body>
+    <h1>Python Script Executor</h1>
+    <form action="/execute" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".py">
+        <input type="submit" value="Upload and Execute">
+    </form>
+    {% if message %}
+        <h2>Result:</h2>
+        <pre>{{ message }}</pre>
+    {% endif %}
+    {% if error %}
+        <h2>Error:</h2>
+        <pre>{{ error }}</pre>
+    {% endif %}
+</body>
+</html>
