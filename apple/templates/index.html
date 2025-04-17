@@ -1,175 +1,177 @@
 <!DOCTYPE html>
 <html lang="ja">
-    <head>
-        <meta charset="utf-8">
-        <meta name="view" content="width=device-width,initial-scale=1.0">
-        <title>マスタシフト更新処理</title>
-        <style>
-            #resultcontainer{
-                margin-top: 20px;
-                padding: 10px;
-                border: 1px solid #ccc;
-                background-color: #f9f9f9;
-            }
-        </style>
-    </head>
-    <body>
-        <h1>シフト更新処理</h1>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>マスタシフト更新処理</title>
+    <style>
+      body {
+        font-family: 'Arial', sans-serif;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 20px;
+      }
+      .container {
+        max-width: 600px;
+        margin: auto;
+        background: #fff;
+        padding: 30px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+      }
+      h1 {
+        font-size: 20px;
+        margin-bottom: 20px;
+        text-align: center;
+      }
+      label {
+        font-weight: bold;
+        display: block;
+        margin-top: 20px;
+      }
+      input[type="text"],
+      input[type="number"] {
+        width: 100%;
+        padding: 10px;
+        margin-top: 5px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        margin-top: 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        width: 100%;
+        font-weight: bold;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      #resultcontainer, #botstatus {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #e9ecef;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>マスタシフト更新</h1>
 
-        <!--スプレッドシートID-->
-        <label for="spreadsheet_url">スプレッドシートID</label>
-        <input type="text" id="spreadsheet_url" name="spreadsheet_url" required>
-        <br><br>   
+      <label for="spreadsheet_url">スプレッドシートURL</label>
+      <input type="text" id="spreadsheet_url" name="spreadsheet_url" required />
 
-        <!--列入力フォーム-->
-        <label for="columnnumber">更新したい列番号:</label>
-        <input type="number"id="columnnumber"placeholder="列番号(例:23)">
-        <br><br>
+      <label for="columnnumber">更新対象の最初の列</label>
+      <input type="text" id="columnnumber" placeholder="列(例:3またはC)" />
 
-        <!--開催日数入力フォーム-->
-        <label for="columncount">開催日数:</label>
-        <input type="number"id="columncount"placeholder="開催日数を入力">
-        <br><br>
+      <label for="columncount">開催日数</label>
+      <input type="number" id="columncount" placeholder="開催日数を入力" />
 
-        <!--リセットボタン-->
-        <button id="resetbutton">最終処理行リセット</button>
-        <br><br>
+      <button id="executeButton">シフト更新実行</button>
+      <button id="resetbutton">最終処理行リセット<br>※月の初めにリセットしてください※</button>
+      <button id="start_bot">DiscordBot起動</button>
 
-        <!--Discordbot起動ボタン-->
-        <button id="start_bot">DiscordBot起動</button>
-        <div id="botstatus"></div>
+      <div id="resultcontainer"></div>
+      <div id="botstatus"></div>
+    </div>
 
-        <!--シフト更新処理実行ボタン-->
-        <button id="executeButton">シフト更新実行</button>
-        <div id="resultcontainer"></div>
-        <br><br>
-
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const executeButton = document.getElementById("executeButton");
+        const resetButton = document.getElementById("resetbutton");
+        const botButton = document.getElementById("start_bot");
         
-        
-        
+        executeButton.addEventListener("click", function () {
+          if (!confirm("シフト更新を実行しますか？")) {
+           return; // キャンセルされた場合は処理を中断
+          }
+          executeButton.disabled = true;
+          const columnnumber = document.getElementById("columnnumber").value;
+          const columncount = document.getElementById("columncount").value;
+          const spreadsheet_url = document.getElementById("spreadsheet_url").value;
+          const resultContainer = document.getElementById("resultcontainer");
 
-        <script>
-            document.addEventListener("DOMContentLoaded",function(){
-                document.getElementById("executeButton").addEventListener("click",function(){
-                    console.log("ボタンがクリックされました");
-                    //ボタンを無効化
-                    let button=document.getElementById("executeButton");
-                    button.disabled=true;
+          if (!columnnumber || !columncount || !spreadsheet_url) {
+            alert("列番号・開催日数・スプレッドシートIDを入力してください");
+            executeButton.disabled = false;
+            return;
+          }
 
-                    let columncount=document.getElementById("columncount").value;//開催日数を取得
-                    let columnnumber=document.getElementById("columnnumber").value;//列番号を取得
-                    let spreadsheet_url=document.getElementById("spreadsheet_url").value;//IDを取得
+          resultContainer.innerHTML = "<p>処理を開始します...</p>";
 
-                    if (!columnnumber || !columncount || !spreadsheet_url){
-                        alert("列番号・開催日数・スプレッドシートIDを入力してください")
-                        button.disabled=false;
-                        return;
-                    }
-
-                    //処理開始のメッセージを表示
-                    let resultContainer=document.getElementById("resultcontainer");
-                    resultContainer.innerHTML="<p>処理を開始します...</p>";
-
-                    //スプレッドシートIDを設定
-                    fetch("/set_shift_spreadsheet",{
-                        method:"POST",
-                        headers:{
-                            'Content-Type':'application/json'
-                        },
-                        body:JSON.stringify({spreadsheet_url:spreadsheet_url})
-                    })
-                    .then(response=>{
-                    if (!response.ok){
-                        throw new Error("スプレッドシートIDの設定に失敗しました。")
-                    }
-                    return response.json();
-                })
-                .then(()=>{
-                    return fetch("/process_shift",{
-                        method:"POST",
-                        headers:{
-                            'Content-Type':'application/json'
-                        },
-                        body:JSON.stringify({
-                            spreadsheet_url:spreadsheet_url,
-                            column_number:columnnumber,//列番号送信
-                            column_count:columncount//列数送信
-                        })
-                    });
-                })
-                .then(response=>{
-                    if (!response.ok){
-                        throw new Error("シフト更新処理に失敗しました。");
-                    }
-                    return response.json().then(data=>({status:response.status,body:data}));
-                })
-                
-                .then(result=>{
-                    console.log(result.body)//サーバーからのレスポンス確認　デバック用
-                    let resultContainer=document.getElementById("resultcontainer");
-                    resultContainer.innerHTML="";//前回の結果をクリア
-
-                    //初回実行か前回で処理した行を表示
-                    let infoText=document.createElement("p");
-                    if (result.body.last_processed_row===1){
-                    infoText.textContent=result.body.info_message;
-                    }else {
-                        infoText.textContent="前回の最終処理行:"+result.body.last_processed_row;
-                    }
-                    resultContainer.appendChild(infoText)
-
-                    //同じメッセージをターミナルに表示
-                    console.log(infoText.textContent)
-
-                    if (result.status===200){
-                        //結果をページに表示
-                        let messagelist=document.createElement("ul");
-                        result.body.message.forEach(msg=>{
-                            let listitem=document.createElement("li");
-                            listitem.textContent=msg;
-                            messagelist.appendChild(listitem);
-                        });
-                        resultContainer.appendChild(messagelist);
-                    }else if (result.status===404){
-                        alert("新しいデータはありません")
-                    }else{
-                        resultContainer.textContent="エラーが発生しました:"+result.status;
-                    }
-
-                    //処理終了後にボタンを再度有効化
-                    button.disabled=false;
-                })
-                .catch(error=>{
-                    console.error("Fetch error:",error);
-                    alert("通信エラーが発生しました:"+error.message);
-                    button.disabled=false; //エラー時にもボタンを有効化
-                });
-            });
-            //リセットボタン
-            document.getElementById("resetbutton").addEventListener("click", function(){
-                fetch("/reset_last_row",{
-                    method:"POST"
-                })
-                .then(response=>response.json())
-                .then(data=>alert(data.message))
-                .catch(error=>console.error("エラー:",error));
+          fetch("/set_shift_spreadsheet", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ spreadsheet_url: spreadsheet_url }),
+          })
+            .then((res) => res.ok ? res.json() : Promise.reject("スプレッドシートIDの設定に失敗しました。"))
+            .then(() => {
+              return fetch("/process_shift", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  spreadsheet_url: spreadsheet_url,
+                  column_number: columnnumber,
+                  column_count: columncount,
+                }),
+              });
             })
-            //Discord Bot 起動ボタン
-            document.getElementById("start_bot").addEventListener("click", function(){
-                fetch("/start_bot",{
-                    method:"POST"
-                })
-                .then(response=>response.json())
-                .then(data=>{
-                    document.getElementById("botstatus").textContent=data.message;
-                })
-                .catch(error=>{
-                    document.getElementById("botstatus").textContent="エラーが発生しました";
-                })
+            .then((res) => res.ok ? res.json().then((data) => ({ status: res.status, body: data })) : Promise.reject("シフト更新処理に失敗しました。"))
+            .then((result) => {
+              resultContainer.innerHTML = "";
+              const infoText = document.createElement("p");
+              infoText.textContent = result.body.last_processed_row === 1
+                ? result.body.info_message
+                : `前回の最終処理行: ${result.body.last_processed_row}`;
+              resultContainer.appendChild(infoText);
+
+              if (result.status === 200) {
+                const messageList = document.createElement("ul");
+                result.body.message.forEach((msg) => {
+                  const li = document.createElement("li");
+                  li.textContent = msg;
+                  messageList.appendChild(li);
+                });
+                resultContainer.appendChild(messageList);
+              } else if (result.status === 404) {
+                alert("新しいデータはありません");
+              } else {
+                resultContainer.textContent = `エラーが発生しました: ${result.status}`;
+              }
+
+              executeButton.disabled = false;
+            })
+            .catch((error) => {
+              console.error("Fetch error:", error);
+              alert("通信エラーが発生しました:" + error);
+              executeButton.disabled = false;
             });
         });
-        
-        
-    </script>  
-    </body>
+
+        resetButton.addEventListener("click", function () {
+          fetch("/reset_last_row", { method: "POST" })
+            .then((res) => res.json())
+            .then((data) => alert(data.message))
+            .catch((err) => console.error("エラー:", err));
+        });
+
+        botButton.addEventListener("click", function () {
+          fetch("/start_bot", { method: "POST" })
+            .then((res) => res.json())
+            .then((data) => {
+              document.getElementById("botstatus").textContent = data.message;
+            })
+            .catch(() => {
+              document.getElementById("botstatus").textContent = "エラーが発生しました";
+            });
+        });
+      });
+    </script>
+  </body>
 </html>
