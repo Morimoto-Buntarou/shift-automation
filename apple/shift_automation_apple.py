@@ -4,23 +4,32 @@ from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
 import string
 from dotenv import load_dotenv
+import json
 import re, os
 import subprocess
 
 app = Flask(__name__)
 CORS(app)
 
-load_dotenv(dotenv_path="apple/.env")
+load_dotenv()
 
-json_path = os.getenv("GOOGLE_JSON_PATH")
-credentials = Credentials.from_service_account_file(
-    json_path,
+# GOOGLE_CREDENTIALSを環境変数から取得して認証情報を生成
+service_account_json = os.getenv("GOOGLE_CREDENTIALS")
+if not service_account_json:
+    raise Exception("GOOGLE_CREDENTIALS が設定されていません")
+
+credentials_info = json.loads(service_account_json)
+credentials = Credentials.from_service_account_info(
+    credentials_info,
     scopes=["https://www.googleapis.com/auth/spreadsheets"]
 )
+
+# gspread 認証
 gs = gspread.authorize(credentials)
 
 shift_spreadsheet_id = ""
-master_spreadsheet_id = "16y2vkOALlolyPpcZ86_7XLQAARrAMNrH1wS31pqLm5Q"
+master_spreadsheet_id = os.getenv("MASTER_SPREADSHEET_ID")
+master_spreadsheet = gs.open_by_key(master_spreadsheet_id)
 
 def url_spreadsheet_id(url):
     match = re.search(r"/d/([a-zA-Z0-9-_]+)", url)
@@ -72,7 +81,6 @@ def process_shift():
     last_processed_row = get_last_processed_row()
     updated_row = process_shifts(column_number, column_count) or []
     updated_list = [msg.split(" のシフト")[0] for msg in updated_row]
-
 
     response = {
         "last_processed_row": last_processed_row,
@@ -140,7 +148,7 @@ def process_shifts(column_number, column_count):
                 if shift_id == master_id and shift_name == master_name:
                     for i in range(column_count):
                         cell = f'{get_column_letter(column_number + i)}{row_num}'
-                        updates.append({"range": cell, "values": [[shift_status_list[i]]]})
+                        updates.append({"range": cell, "values": [[shift_status_list[i]]]} )
                     updated_row.append(f"{shift_name}のシフトが更新されました。")
                     break
 
@@ -155,7 +163,7 @@ def process_shifts(column_number, column_count):
 @app.route('/start_bot', methods=['POST'])
 def start_bot():
     try:
-        script_path = r"C:\Users\bunta\Downloads\shift-automation\apple\kakutei-automation-apple.py"
+        script_path = r"C:\\Users\\bunta\\Downloads\\shift-automation\\apple\\kakutei-automation-apple.py"
         subprocess.Popen(["python", script_path])
         return jsonify({"message": "Discord Bot 起動します"}), 200
     except Exception as e:
