@@ -19,6 +19,8 @@ if not service_account_json:
     raise Exception("GOOGLE_CREDENTIALS が設定されていません")
 
 credentials_info = json.loads(service_account_json)
+credentials_info["private_key"] = credentials_info["private_key"].replace('\\n', '\n')
+
 credentials = Credentials.from_service_account_info(
     credentials_info,
     scopes=["https://www.googleapis.com/auth/spreadsheets"]
