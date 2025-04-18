@@ -1,2 +1,2 @@
-web: gunicorn shift_automation_apple:app
+web: gunicorn shiftautomation_main:app
 
